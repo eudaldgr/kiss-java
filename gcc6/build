@@ -1,0 +1,169 @@
+#!/bin/sh -e
+
+cd gcc
+patch -p1 < "patches/gcc-650-revert-staticpie.patch" #required for gcc630-mcm.patch
+patch -p1 < "patches/gcc-650-c++-abi-break.patch"
+patch -p1 < "patches/gcc-640-invalid_tls_model.patch"
+patch -p1 < "patches/gcc-640-m68k.patch"
+patch -p1 < "patches/gcc-640-posix_memalign.patch"
+patch -p1 < "patches/gcc630-mcm.patch"
+patch -p1 < "patches/gcc-libtool-reproducible.patch"
+patch -p1 < "patches/gcc-gcj-stdgnu14-link.patch"
+patch -p1 < "patches/gcc4-boehm-gc.patch"
+patch -p1 < "patches/gcc4-gcj-musl.patch"
+patch -p1 < "patches/gcc4-gcj-iconv-musl.patch"
+cd ..
+
+# Make sure gmp is built with generic options.
+cp gcc/gmp/configfsf.guess gcc/gmp/config.guess
+cp gcc/gmp/configfsf.sub   gcc/gmp/config.sub
+
+# Simply
+cp gcc/ecj/ecj-*.jar       gcc/ecj.jar
+
+# Use lib not lib64 by default.
+sed -i '/m64=/s/lib64/lib/' gcc/gcc/config/i386/t-linux64
+sed -i 's/lib64/lib/'       gcc/gcc/config/i386/linux64.h
+
+# Build must happen outside of gcc source.
+mkdir -p gcc-build
+cd gcc-build
+
+export CC=gcc
+export CXX=g++
+export AR=ar
+export RANLIB=ranlib
+
+export libat_cv_have_ifunc=no
+
+CFLAGS="-Os -g0" \
+CXXFLAGS="-Os -g0" \
+LDFLAGS="-s -Wl,--no-keep-memory" \
+CFLAGS_FOR_TARGET="-Os -g0" \
+LDFLAGS_FOR_TARGET="-s" \
+../gcc/configure \
+    -C \
+    --with-headers=no \
+    --build=x86_64-pc-linux-musl \
+    --host=x86_64-pc-linux-musl \
+    --target=x86_64-pc-linux-musl \
+    --prefix=/usr \
+    --libdir=/usr/lib \
+    --libexecdir=/usr/lib \
+    --infodir=/usr/share/info \
+    --mandir=/usr/share/man \
+    --with-jvm-root=/usr/lib/jvm/java-1.5-gcj \
+    --disable-multilib \
+    --with-multilib-list= \
+    --disable-nls \
+    --disable-mudflap \
+    --disable-libmudflap \
+    --enable-libssp \
+    --disable-libgomp \
+    --disable-symvers \
+    --disable-debug \
+    --disable-bootstrap \
+    --disable-libsanitizer \
+    --disable-vtable-verify \
+    --disable-gnu-indirect-function \
+    --disable-libmpx \
+    --disable-libquadmath \
+    --enable-libstdcxx-time \
+    --enable-lto \
+    --with-system-zlib \
+    --with-target-libiberty=no \
+    --with-target-zlib=no \
+    --enable-languages=c,c++,lto,java \
+    --enable-languages=java \
+    --enable-clocale=generic \
+    --program-suffix="-6"
+
+gcc_cv_libc_provides_ssp=yes \
+make -j$(nproc)
+make -j1 DESTDIR="$1" \
+    install-gcc \
+    install-lto-plugin \
+    install-target-libgcc \
+    install-target-libssp \
+    install-target-libstdc++-v3 \
+    install-target-libjava
+
+# Save 35MB.
+find "$1" -name libgtkpeer.a  -exec rm -f {} +
+find "$1" -name libgjsmalsa.a -exec rm -f {} +
+find "$1" -name libgij.a      -exec rm -f {} +
+
+# Some legacy programs will expect cc
+ln -s gcc-6 "$1/usr/bin/cc-6"
+
+# GCJ-6 it's the last version, not needed to append the number
+ln -s gcj-6 "$1/usr/bin/gcj"
+
+# Remove python stuff
+rm -rf "$1/usr/share/gcc-6.5.0/python"
+
+# Version info files to avoid conflicts with gcc
+for file in cp-tools cpp cppinternals gcc gccinstall gccint gcj; do
+    if [ -f "$1/usr/share/info/$file.info" ]; then
+        mv "$1/usr/share/info/$file.info" \
+           "$1/usr/share/info/$file-6.info"
+    fi
+done
+
+# Conflicting manpages, provided by gcc
+rm -rf "$1/usr/share/man/man7"
+
+# Provided by main libgcc
+rm -f "$1/usr/lib/libgcc_s.so.1"
+rm -f "$1/usr/lib/libgcc_s.so"
+
+# Remove gcc's libssp.* (we only need libssp_nonshared.a)
+rm -f "$1/usr/lib/libssp.so.0.0.0"
+rm -f "$1/usr/lib/libssp.so.0"
+rm -f "$1/usr/lib/libssp.so"
+rm -f "$1/usr/lib/libssp.la"
+rm -f "$1/usr/lib/libssp.a"
+
+# Remove gcc's stddef.h which is not compatible
+rm "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/stddef.h"
+
+# Build ecj - needed for compat package
+"$1/usr/bin/gcj-6" -Wl,-Bsymbolic -findirect-dispatch \
+    -o "$1/usr/bin/ecj-gcj" \
+    --main=org.eclipse.jdt.internal.compiler.batch.Main \
+    "$1/usr/share/java/ecj.jar" -lgcj
+
+# GNU C Compiler (6.x) - JDK compatiblity layer
+mkdir -p "$1/usr/lib/jvm/java-1.5-gcj/bin" "$1/usr/lib/jvm/java-1.5-gcj/lib"
+ln -sf /usr/bin/gij-6                         "$1/usr/lib/jvm/java-1.5-gcj/bin/java"
+ln -sf /usr/bin/fastjar                       "$1/usr/lib/jvm/java-1.5-gcj/bin/fastjar"
+ln -sf /usr/bin/grmic-6                       "$1/usr/lib/jvm/java-1.5-gcj/bin/rmic"
+ln -sf /usr/bin/gjavah-6                      "$1/usr/lib/jvm/java-1.5-gcj/bin/javah"
+ln -sf /usr/bin/gappletviewer-6               "$1/usr/lib/jvm/java-1.5-gcj/bin/appletviewer"
+ln -sf /usr/bin/gjarsigner-6                  "$1/usr/lib/jvm/java-1.5-gcj/bin/jarsigner"
+ln -sf /usr/bin/grmiregistry-6                "$1/usr/lib/jvm/java-1.5-gcj/bin/rmiregistry"
+ln -sf /usr/bin/gkeytool-6                    "$1/usr/lib/jvm/java-1.5-gcj/bin/keytool"
+ln -sf /usr/bin/gjar-6                        "$1/usr/lib/jvm/java-1.5-gcj/bin/gjar"
+ln -sf /usr/bin/gnative2ascii-6               "$1/usr/lib/jvm/java-1.5-gcj/bin/gnative2ascii"
+ln -sf /usr/bin/ecj-gcj                       "$1/usr/lib/jvm/java-1.5-gcj/bin/javac"
+ln -sf /usr/share/java/libgcj-tools-6.5.0.jar "$1/usr/lib/jvm/java-1.5-gcj/lib/tools.jar"
+
+# symlink headers for jni.h and so on, don't do the whole directory
+# otherwise undesirable gcc include files might leak into the builds
+mkdir -p "$1/usr/lib/jvm/java-1.5-gcj/include"
+ln -sf /usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/gcj       "$1/usr/lib/jvm/java-1.5-gcj/include/gcj"
+ln -sf /usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/jawt.h    "$1/usr/lib/jvm/java-1.5-gcj/include/jawt.h"
+ln -sf /usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/jawt_md.h "$1/usr/lib/jvm/java-1.5-gcj/include/jawt_md.h"
+ln -sf /usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/jni.h     "$1/usr/lib/jvm/java-1.5-gcj/include/jni.h"
+ln -sf /usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/jni_md.h  "$1/usr/lib/jvm/java-1.5-gcj/include/jni_md.h"
+ln -sf /usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/jvmpi.h   "$1/usr/lib/jvm/java-1.5-gcj/include/jvmpi.h"
+
+mkdir -p "$1/usr/lib/jvm/java-1.5-gcj/jre/bin" "$1/usr/lib/jvm/java-1.5-gcj/jre/lib/amd64"
+ln -sf /usr/bin/gij-6                         "$1/usr/lib/jvm/java-1.5-gcj/jre/bin/java"
+ln -sf /usr/bin/grmiregistry-6                "$1/usr/lib/jvm/java-1.5-gcj/jre/bin/rmiregistry"
+ln -sf /usr/bin/gkeytool-6                    "$1/usr/lib/jvm/java-1.5-gcj/jre/bin/keytool"
+ln -sf /usr/share/java/libgcj-6.5.0.jar       "$1/usr/lib/jvm/java-1.5-gcj/jre/lib/rt.jar"
+ln -sf /usr/share/java/libgcj-tools-6.5.0.jar "$1/usr/lib/jvm/java-1.5-gcj/jre/lib/tools.jar"
+ln -sf /usr/lib/gcj-6.5.0-*/libjvm.so         "$1/usr/lib/jvm/java-1.5-gcj/jre/lib/amd64"
+ln -sf /usr/lib/gcj-6.5.0-*/libjavamath.so    "$1/usr/lib/jvm/java-1.5-gcj/jre/lib/amd64"
+ln -sf /usr/lib/gcj-6.5.0-*/classmap.db       "$1/usr/lib/jvm/java-1.5-gcj/jre/lib/amd64"
