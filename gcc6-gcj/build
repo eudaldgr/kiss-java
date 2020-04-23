@@ -1,17 +1,6 @@
 #!/bin/sh -e
 
 cd gcc
-#patch -p1 < "patches/gcc-650-revert-staticpie.patch" #required for gcc630-mcm.patch
-#patch -p1 < "patches/gcc-650-c++-abi-break.patch"
-#patch -p1 < "patches/gcc-640-invalid_tls_model.patch"
-#patch -p1 < "patches/gcc-640-m68k.patch"
-#patch -p1 < "patches/gcc-640-posix_memalign.patch"
-#patch -p1 < "patches/gcc630-mcm.patch"
-#patch -p1 < "patches/gcc-libtool-reproducible.patch"
-#patch -p1 < "patches/gcc-gcj-stdgnu14-link.patch"
-#patch -p1 < "patches/gcc4-boehm-gc.patch"
-#patch -p1 < "patches/gcc4-gcj-musl.patch"
-#patch -p1 < "patches/gcc4-gcj-iconv-musl.patch"
 patch -p1 < "patches/001_all_default-ssp-strong.patch"
 patch -p1 < "patches/002_all_default-relro.patch"
 patch -p1 < "patches/003_all_default-fortify-source.patch"
