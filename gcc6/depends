@@ -1,3 +1,4 @@
+bash     make
 binutils
 bison    make
 fastjar

@@ -21,6 +21,15 @@ cp gcc/gmp/configfsf.sub   gcc/gmp/config.sub
 # Simply
 cp gcc/ecj/ecj-*.jar       gcc/ecj.jar
 
+# _FORTIFY_SOURCE needs an optimization level.
+sed -i "/ac_cpp=/s/\$CPPFLAGS/\$CPPFLAGS -O2/" gcc/gcc/configure
+sed -i "/ac_cpp=/s/\$CPPFLAGS/\$CPPFLAGS -O2/" gcc/libiberty/configure
+
+# Old isl normally tries to call aclocal-1.14 to reconfigure itself
+cd gcc/isl
+autoreconf -if
+cd ../..
+
 # Use lib not lib64 by default.
 sed -i '/m64=/s/lib64/lib/' gcc/gcc/config/i386/t-linux64
 sed -i 's/lib64/lib/'       gcc/gcc/config/i386/linux64.h
@@ -29,64 +38,92 @@ sed -i 's/lib64/lib/'       gcc/gcc/config/i386/linux64.h
 mkdir -p gcc-build
 cd gcc-build
 
-export CC=gcc
-export CXX=g++
-export AR=ar
-export RANLIB=ranlib
+mkdir -p "$1/usr/include/c++/6.5.0"
+
+export CFLAGS="-Os -g0"
+export CXXFLAGS="-Os -g0"
+export LDFLAGS="-s -Wl,--no-keep-memory"
+export CFLAGS_FOR_TARGET="-Os -g0"
+export LDFLAGS_FOR_TARGET="-s"
 
 export libat_cv_have_ifunc=no
 
-CFLAGS="-Os -g0" \
-CXXFLAGS="-Os -g0" \
-LDFLAGS="-s -Wl,--no-keep-memory" \
-CFLAGS_FOR_TARGET="-Os -g0" \
-LDFLAGS_FOR_TARGET="-s" \
+CONFIG_SHELL=/bin/bash \
 ../gcc/configure \
-    -C \
-    --with-headers=no \
     --build=x86_64-pc-linux-musl \
-    --host=x86_64-pc-linux-musl \
-    --target=x86_64-pc-linux-musl \
+    --program-suffix=-6 \
+    --enable-version-specific-runtime-libs \
     --prefix=/usr \
-    --libdir=/usr/lib \
-    --libexecdir=/usr/lib \
-    --infodir=/usr/share/info \
     --mandir=/usr/share/man \
+    --infodir=/usr/share/info \
+    --libexecdir=/usr/lib \
+    --libdir=/usr/lib \
+    --with-gxx-include-dir=/usr/include/c++/6.5.0 \
+    --enable-languages=c,c++,java,lto \
+    --enable-java-gc=boehm \
     --with-jvm-root=/usr/lib/jvm/java-1.5-gcj \
+    --enable-fast-character \
+    --disable-fixed-point \
+    --enable-threads=posix \
+    --enable-__cxa_atexit \
     --disable-multilib \
-    --with-multilib-list= \
-    --disable-nls \
-    --disable-mudflap \
-    --disable-libmudflap \
-    --enable-libssp \
-    --disable-libgomp \
-    --disable-symvers \
-    --disable-debug \
+    --enable-lto \
     --disable-bootstrap \
+    --with-system-zlib \
+    --enable-shared \
+    --enable-linker-build-id \
+    --disable-werror \
+    --disable-nls \
+    --enable-default-pie \
+    --enable-default-ssp \
+    --enable-checking=release \
+    --disable-libstdcxx-pch \
+    --with-isl \
+    --with-linker-hash-style=gnu \
+    --disable-libunwind-exceptions \
+    --disable-target-libiberty \
+    --disable-libquadmath \
     --disable-libsanitizer \
     --disable-vtable-verify \
-    --disable-gnu-indirect-function \
+    --disable-libitm \
+    --disable-libgomp \
+    --disable-libatomic \
     --disable-libmpx \
-    --disable-libquadmath \
-    --enable-libstdcxx-time \
-    --enable-lto \
-    --with-system-zlib \
-    --with-target-libiberty=no \
-    --with-target-zlib=no \
-    --enable-languages=c,c++,lto,java \
-    --enable-languages=java \
-    --enable-clocale=generic \
-    --program-suffix="-6"
+    --disable-libmudflap \
+    --disable-libssp \
+    --disable-symvers
 
-gcc_cv_libc_provides_ssp=yes \
 make -j$(nproc)
-make -j1 DESTDIR="$1" \
-    install-gcc \
-    install-lto-plugin \
-    install-target-libgcc \
-    install-target-libssp \
-    install-target-libstdc++-v3 \
-    install-target-libjava
+make DESTDIR="$1" install
+
+if [ -e "$1/usr/lib64" ]; then
+	rm -f "$1/usr/lib64"
+fi
+
+# Avoid conflict with gcc
+mv "$1/usr/lib/libcc1.so.0.0.0" "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0"
+mv "$1/usr/lib/libcc1.so.0"     "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0"
+mv "$1/usr/lib/libcc1.so"       "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0"
+mv "$1/usr/lib/libcc1.la"       "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0"
+
+# Gcj libs need to be available in primary libdir
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj_bc.so.1.0.0"     "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj_bc.so.1"         "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj_bc.so"           "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj.so.17.0.0"       "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj.so.17"           "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj.so"              "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj-tools.so.17.0.0" "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj-tools.so.17"     "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgcj-tools.so"        "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgij.so.17.0.0"       "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgij.so.17"           "$1/usr/lib"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/libgij.so"              "$1/usr/lib"
+
+# Move pkg-config file into a path pkg-config knows about
+mkdir -p "$1/usr/lib/pkgconfig"
+mv "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/pkgconfig/libgcj-6.pc" "$1/usr/lib/pkgconfig"
+rmdir "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/pkgconfig"
 
 # Save 35MB.
 find "$1" -name libgtkpeer.a  -exec rm -f {} +
@@ -95,9 +132,6 @@ find "$1" -name libgij.a      -exec rm -f {} +
 
 # Some legacy programs will expect cc
 ln -s gcc-6 "$1/usr/bin/cc-6"
-
-# GCJ-6 it's the last version, not needed to append the number
-ln -s gcj-6 "$1/usr/bin/gcj"
 
 # Remove python stuff
 rm -rf "$1/usr/share/gcc-6.5.0/python"
@@ -125,7 +159,7 @@ rm -f "$1/usr/lib/libssp.la"
 rm -f "$1/usr/lib/libssp.a"
 
 # Remove gcc's stddef.h which is not compatible
-rm "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/stddef.h"
+rm -f "$1/usr/lib/gcc/x86_64-pc-linux-musl/6.5.0/include/stddef.h"
 
 # Build ecj - needed for compat package
 "$1/usr/bin/gcj-6" -Wl,-Bsymbolic -findirect-dispatch \

@@ -3,6 +3,7 @@ https://gmplib.org/download/gmp/gmp-6.1.2.tar.xz       gcc/gmp
 https://ftp.gnu.org/gnu/mpfr/mpfr-4.0.2.tar.xz         gcc/mpfr
 https://ftp.gnu.org/gnu/mpc/mpc-1.1.0.tar.gz           gcc/mpc
 https://sourceware.org/pub/java/ecj-4.9.jar            gcc/ecj
+http://isl.gforge.inria.fr/isl-0.16.tar.bz2            gcc/isl
 patches/gcc-640-invalid_tls_model.patch                gcc/patches
 patches/gcc-640-m68k.patch                             gcc/patches
 patches/gcc-640-posix_memalign.patch                   gcc/patches
