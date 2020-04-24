@@ -1,6 +1,17 @@
-# kiss-java
+# :coffee: kiss-java
 
-This repository is under construction.
-If someone wants to help achieve compilation of the latest openjdk package, please open a pull request.
+:construction_worker_woman: :construction: This repository is under construction.\
+If someone wants to help achieve compilation of the latest openjdk package,
+please open a pull request or issue.
 
-At this time there is a functional `gcj` package builded on `gcc6`.
+Package | Status
+--------|-------
+`gcc6-gcj`           | :heavy_check_mark: :tada: 
+`openjdk7-bootstrap` | :warning: :radioactive:
+`openjdk8`           | :x: :no_entry:
+`openjdk9`           | :x: :no_entry:
+`openjdk10`          | :x: :no_entry:
+`openjdk11`          | :x: :no_entry:
+`openjdk12`          | :x: :no_entry:
+`openjdk13`          | :x: :no_entry:
+`openjdk14`          | :x: :no_entry:
