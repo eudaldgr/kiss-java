@@ -25,4 +25,3 @@ files/icedtea-pr64174.patch                                                     
 files/generated-comments.patch                                                            icedtea/patches/boot
 files/bootstrap-tools.patch                                                               icedtea/patches/boot
 files/jopt.patch                                                                          icedtea/patches/boot
-files/pr64174.patch                                                                       icedtea/patches/boot

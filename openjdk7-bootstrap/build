@@ -1,5 +1,8 @@
 #!/bin/sh -e
 
+# using ccache causes ICEs with pregenerated headers
+export CCACHE_DISABLE=1
+
 # We build on the icedtea dir
 cd icedtea
 
@@ -33,13 +36,18 @@ export EXTRA_CPP_FLAGS="$CXXFLAGS -std=gnu++98 -fno-delete-null-pointer-checks -
 # version for C too.
 export EXTRA_CFLAGS="$CFLAGS -std=gnu++98 -Wno-error -fno-delete-null-pointer-checks -fno-lifetime-dse -fno-strict-overflow"
 
-for patch in *.patch; do
-    case $patch in
-    icedtea-*.patch)
-        export DISTRIBUTION_PATCHES="$DISTRIBUTION_PATCHES patches/$patch"
-        ;;
-    esac
-done
+export DISTRIBUTION_PATCHES="patches/icedtea-cpio.patch \
+    patches/icedtea-hotspot-musl-ppc.patch \
+    patches/icedtea-hotspot-musl.patch \
+    patches/icedtea-hotspot-noagent-musl.patch \
+    patches/icedtea-hotspot-uclibc-fixes.patch \
+    patches/icedtea-jdk-execinfo.patch \
+    patches/icedtea-jdk-fix-build.patch \
+    patches/icedtea-jdk-fix-ipv6-init.patch \
+    patches/icedtea-jdk-musl.patch \
+    patches/icedtea-jdk-no-soname.patch \
+    patches/icedtea-jdk-xattr.patch \
+    patches/icedtea-pr64174.patch"
 
 ./configure \
     --build=x86_64-pc-linux-musl \
@@ -54,7 +62,9 @@ done
     --disable-system-kerberos \
     --disable-system-pcsc \
     --disable-system-sctp \
+    --enable-native-debuginfo \
     --disable-downloading \
+    --disable-Werror \
     --disable-arm32-jit \
     --with-rhino=$(pwd)/rhino/rhino1.7.7.2/lib/rhino-1.7.7.2.jar \
     --with-openjdk-src-zip=$(pwd)/extra/openjdk.tar.bz2 \
@@ -64,7 +74,7 @@ done
     --with-jaxws-src-zip=$(pwd)/extra/jaxws.tar.bz2 \
     --with-jdk-src-zip=$(pwd)/extra/jdk.tar.bz2 \
     --with-langtools-src-zip=$(pwd)/extra/langtools.tar.bz2 \
-    --with-jdk-home=/usr/lib/jvm/java-1.5-gcj/ \
+    --with-jdk-home=/usr/lib/jvm/java-1.5-gcj \
     --with-pkgversion="Kisslinux 7.221.2.6.18-r1"
 
 make -j1 SHELL=/bin/bash icedtea-boot
