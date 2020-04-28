@@ -7,7 +7,7 @@ please open a pull request or issue.
 Package | Status
 --------|-------
 `gcc6-gcj`           | :heavy_check_mark: :tada: 
-`openjdk7-bootstrap` | :warning: :radioactive:
+`openjdk7-bootstrap` | :warning: :construction:
 `openjdk8`           | :x: :no_entry:
 `openjdk9`           | :x: :no_entry:
 `openjdk10`          | :x: :no_entry:
