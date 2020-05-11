@@ -15,3 +15,11 @@ Package | Status
 `openjdk12`          | :x: :no_entry:
 `openjdk13`          | :x: :no_entry:
 `openjdk14`          | :x: :no_entry:
+
+## Instructions
+
+```
+# NOTE: The community repository must also be enabled.
+-> git clone https://github.com/eudaldgr/kiss-java
+-> export KISS_PATH=/path/to/kiss-java/java:$KISS_PATH
+```
