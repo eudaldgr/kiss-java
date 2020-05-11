@@ -61,10 +61,16 @@ export DISTRIBUTION_PATCHES="patches/icedtea-cpio.patch \
     --disable-dependency-tracking \
     --disable-system-kerberos \
     --disable-system-pcsc \
-    --disable-system-sctp \
     --enable-native-debuginfo \
     --disable-downloading \
     --disable-Werror \
+	--enable-bootstrap \
+	--disable-hotspot-tests \
+	--disable-docs \
+	--disable-jdk-tests \
+	--disable-langtools-tests \
+	--disable-systemtap-tests \
+	--disable-tests \
     --disable-arm32-jit \
     --with-rhino=$(pwd)/rhino/rhino1.7.7.2/lib/rhino-1.7.7.2.jar \
     --with-openjdk-src-zip=$(pwd)/extra/openjdk.tar.bz2 \

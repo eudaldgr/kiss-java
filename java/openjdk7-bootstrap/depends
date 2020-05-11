@@ -23,6 +23,8 @@ libXslt           make
 libXt             make
 libXtst           make
 linux-headers     make
+libXp             make
+lksctp-tools      make
 nss               make
 util-linux        make
 xz                make
